@@ -162,23 +162,20 @@ contract OrbitalPool is ReentrancyGuard {
         // Step 1: Validate amounts are consistent with tick parameters
         _validateLiquidityAmounts(radius, planeConstant, amounts);
         
-        // Step 2: Get or create tick
-        tickId = _getOrCreateTick(radius, planeConstant);
-        
-        // Step 3: Calculate LP shares to mint
+        // Step 2: Calculate LP shares to mint
         sharesReceived = _calculateLpShares(tickId, amounts);
         
-        // Step 4: Transfer tokens from user
+        // Step 3: Transfer tokens from user
         for (uint256 i = 0; i < tokenCount; i++) {
             if (amounts[i] > 0) {
                 tokens[i].safeTransferFrom(msg.sender, address(this), amounts[i]);
             }
         }
         
-        // Step 5: Update tick state
+        // Step 4: Update tick state
         _updateTickOnLiquidityAdd(tickId, amounts, sharesReceived);
         
-        // Step 6: Update global state
+        // Step 5: Update global state
         _updateGlobalStateOnLiquidityAdd(amounts);
         
         emit LiquidityAdded(msg.sender, tickId, amounts, sharesReceived, radius, planeConstant);
@@ -597,6 +594,93 @@ contract OrbitalPool is ReentrancyGuard {
         require(sumSquares > 0, "Zero liquidity");
         // Additional geometric validations would go here
     }
+    function _validateLiquidityAmounts(
+    uint256 radius,
+    uint256 planeConstant,
+    uint256[] memory amounts
+) internal view {
+    require(amounts.length == tokenCount, "Invalid token count");
+    require(radius > 0, "Zero radius");
+    require(planeConstant > 0, "Zero plane constant");
+
+    // Calculate sqrt(n) and sqrt(n-1) with fixed point precision
+    uint256 sqrtN = _sqrt(tokenCount * PRECISION);
+    uint256 sqrtNMinus1 = _sqrt((tokenCount - 1) * PRECISION);
+
+    // Minimal and maximal plane constant bounds
+    uint256 minPlaneConstant = (radius * (sqrtN - PRECISION)) / PRECISION;         // r * (sqrt(n) - 1)
+    uint256 maxPlaneConstant = (radius * (tokenCount - 1) * PRECISION) / sqrtN;    // r * (n-1)/sqrt(n)
+
+    require(
+        planeConstant >= minPlaneConstant && planeConstant <= maxPlaneConstant,
+        "Plane constant out of bounds"
+    );
+
+    // Compute minimal per-token reserve: r_min = (P - r * sqrt(n-1)) / sqrt(n)
+    uint256 numerator = 0;
+    if (planeConstant > (radius * sqrtNMinus1) / PRECISION) {
+        numerator = planeConstant - (radius * sqrtNMinus1) / PRECISION;
+    }
+    uint256 minReserve = numerator / sqrtN;
+
+    // Maximum reserve per token is the radius
+    uint256 maxReserve = radius;
+
+    // Check min and max reserves per token
+    for (uint256 i = 0; i < tokenCount; i++) {
+        require(amounts[i] >= minReserve, "Token reserve below minimal reserve");
+        require(amounts[i] <= maxReserve, "Token reserve exceeds radius");
+    }
+
+    // Check sphere and plane constraints for new tick (sumSquares == r^2; sumAmounts == P)
+    uint256 sumAmounts = 0;
+    uint256 sumSquares = 0;
+
+    for (uint256 i = 0; i < tokenCount; i++) {
+        sumAmounts += amounts[i];
+        sumSquares += (amounts[i] * amounts[i]) / PRECISION;
+    }
+
+    // Identify existing tick by hash
+    bytes32 tickHash = keccak256(abi.encodePacked(radius, planeConstant));
+    uint256 tickId = tickRegistry[tickHash];
+
+    bool tickExists = tickId != 0 && ticks[tickId].totalLpShares > 0;
+
+    if (!tickExists) {
+        // New tick: reserves must exactly satisfy plane and sphere constraints
+        require(sumAmounts == planeConstant, "Sum of amounts != plane constant");
+        require(sumSquares == radius * radius, "Sum squares of amounts != radius squared");
+    } else {
+        // Existing tick: deposits must maintain proportionality
+        Tick storage tick = ticks[tickId];
+
+        // Find reference reserve and amount (first nonzero)
+        uint256 refReserve = 1;
+        uint256 refAmount = 1;
+        bool refSet = false;
+
+        for (uint256 i = 0; i < tokenCount; i++) {
+            if (tick.reserves[i] > 0 || amounts[i] > 0) {
+                refReserve = tick.reserves[i];
+                refAmount = amounts[i];
+                refSet = true;
+                break;
+            }
+        }
+
+        require(refSet, "No reserve or amount to compare proportionality");
+
+        // Check that deposit is proportional to current reserves
+        for (uint256 i = 0; i < tokenCount; i++) {
+            require(
+                tick.reserves[i] * refAmount == refReserve * amounts[i],
+                "Deposit amounts not proportional to reserves"
+            );
+        }
+    }
+}
+
     
     function _calculateNormalizedPosition(uint256 tickId) internal view returns (uint256) {
         // Calculate normalized position for boundary comparison
