@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {OrbitalPool} from "../src/pool.sol";
+import {OrbitalPool} from "../src/poolV2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Mock ERC20 token for testing
