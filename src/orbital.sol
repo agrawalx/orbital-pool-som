@@ -272,53 +272,7 @@ contract orbitalPool {
         }
     }
 
-    /**
-     * @dev Calculate trade using global torus invariant
-     * Implements the global trade invariant from Section "Global Trade Invariant"
-     */
-    function _calculateTradeWithGlobalInvariant(
-        uint256 tokenIn,
-        uint256 tokenOut,
-        uint256 amountIn,
-        uint256[TOKENS_COUNT] memory currentReserves,
-        ConsolidatedTickData memory interiorData,
-        ConsolidatedTickData memory boundaryData
-    ) internal pure returns (uint256 amountOut, uint256[TOKENS_COUNT] memory newReserves) {
-        newReserves = currentReserves;
-        newReserves[tokenIn] += amountIn;
-        
-        // Solve the torus invariant equation (simplified version using sphere approximation)
-        amountOut = _solveTorusInvariant(tokenIn, tokenOut, amountIn, currentReserves, interiorData, boundaryData);
-        
-        if (amountOut > currentReserves[tokenOut]) {
-            amountOut = currentReserves[tokenOut];
-        }
-        newReserves[tokenOut] -= amountOut;
-    }
-
-    /**
-     * @dev Solve torus invariant - simplified implementation
-     * Full version would use Newton's method on the quartic equation
-     */
-    function _solveTorusInvariant(
-        uint256 tokenIn,
-        uint256 tokenOut,
-        uint256 amountIn,
-        uint256[TOKENS_COUNT] memory currentReserves,
-        ConsolidatedTickData memory interiorData,
-        ConsolidatedTickData memory boundaryData
-    ) internal pure returns (uint256 amountOut) {
-        uint256 totalRadius = interiorData.consolidatedRadius + boundaryData.consolidatedRadius;
-        if (totalRadius == 0) return 0;
-        
-        // Sphere AMM pricing formula: (r - x_j) / (r - x_i)
-        uint256 numerator = (totalRadius > currentReserves[tokenOut]) ? 
-            totalRadius - currentReserves[tokenOut] : 1;
-        uint256 denominator = (totalRadius > currentReserves[tokenIn]) ? 
-            totalRadius - currentReserves[tokenIn] + amountIn : totalRadius + amountIn;
-            
-        amountOut = (amountIn * numerator) / denominator;
-    }
+   
 
     /**
      * @dev Check for tick boundary crossings using normalization
