@@ -33,16 +33,22 @@ contract orbitalPool {
     // Fee configuration
     uint256 public swapFee = 3000; // 0.3% in basis points
     uint256 public constant FEE_DENOMINATOR = 1000000;
+    mapping (uint256 => Tick) public ticks; // k -> Tick
+
     
     function addLiquidity(uint256 k , uint256[TOKENS_COUNT] memory amounts) external {
+
+
+
         // Step 1: Check if tick exists, if not create it. check if there exists a tick with same k
-        // step 2: calculate the radius using sum of square of reserves
-        // step 3: if tick does not exist. check if k is valid and between minimal and maximal bounds. then check if amounts are greater than minimum required and x.v <= K 
-        //         if tick exists, add liquidity to existing tick, check k is bounded by new R constraints. check the plane constraint and then update radius 
-        // step 4: transfer tokens from liquidity provider
+        // step 2: calculate the radius using sum of square of reserves, (sum of square of amounts)
+        // step 3: if tick does not exist. check if k is valid and between minimal and maximal bounds (k should be between (rt5 - 1)*r and 4*r/rt(5)).check (Total Reserve)/rt(5) <= K, then create the tick with radius, k and amounts.
+        //         if tick exists, add liquidity to existing tick, check k is bounded by new R constraints as described above (k should be between (rt5 - 1)*r and 4*r/rt(5)).check (Total Reserve)/rt(5) <= K), if this is correct then update the tick with radius, k and amounts, if not then throw an error.
+        // step 4: transfer tokens from liquidity provider 
         // step 5: calculate how many lp shares to mint
         // step 6: mint lp shares to liquidity provider
         // step 7: update tick data and pool data
+
     }
 
     // implement remove liquidity
@@ -50,4 +56,11 @@ contract orbitalPool {
     // implement tick consolidation functions
     // implement the global trade invariant function
     // implement the normalization and trade segmentation functions 
+
+    //////////////////////////////////
+    /////// Internal Functions ///////
+    //////////////////////////////////
+
+
+   
 }
