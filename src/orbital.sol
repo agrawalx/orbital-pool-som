@@ -148,8 +148,8 @@ contract orbitalPool {
     }
 
     /**
-     * @dev Swap tokens using Orbital AMM with tick consolidation and boundary crossing
-     * Implements the complete trade segmentation process from the whitepaper
+     * @dev Swap tokens using Orbital AMM with proper invariant calculation
+     * Based on reference implementation but adapted to fixed array structure
      */
     function swap(
         uint256 tokenIn, 
@@ -162,74 +162,42 @@ contract orbitalPool {
         if (tokenIn == tokenOut) revert InvalidAmounts();
         if (amountIn == 0) revert InvalidAmounts();
         
-        // Calculate fee
-        uint256 feeAmount = (amountIn * swapFee) / FEE_DENOMINATOR;
-        uint256 amountInAfterFee = amountIn - feeAmount;
-        
-        // Transfer input token
+        // Transfer input token first
         tokens[tokenIn].safeTransferFrom(msg.sender, address(this), amountIn);
         
-        // Execute trade with segmentation
-        amountOut = _executeTradeWithSegmentation(tokenIn, tokenOut, amountInAfterFee);
+        // Apply fee
+        uint256 amountInAfterFee = (amountIn * (FEE_DENOMINATOR - swapFee)) / FEE_DENOMINATOR;
+        
+        // Get current total reserves across all ticks
+        uint256[TOKENS_COUNT] memory totalReserves = _getTotalReserves();
+        
+        // Calculate output amount using torus invariant
+        amountOut = _calculateSwapOutput(
+            totalReserves,
+            tokenIn,
+            tokenOut,
+            amountInAfterFee
+        );
         
         // Slippage check
         if (amountOut < minAmountOut) revert SlippageExceeded();
         
+        // Update reserves and check for tick crossings
+        totalReserves[tokenIn] += amountInAfterFee;
+        totalReserves[tokenOut] -= amountOut;
+        _updateTickReservesWithCrossings(totalReserves);
+        
         // Transfer output token
         tokens[tokenOut].safeTransfer(msg.sender, amountOut);
         
-        // Distribute fees
-        _distributeFees(feeAmount, tokenIn);
+        // Distribute fees proportionally
+        _distributeFees(amountIn - amountInAfterFee, tokenIn);
         
-        emit Swap(msg.sender, tokenIn, tokenOut, amountIn, amountOut, feeAmount);
+        emit Swap(msg.sender, tokenIn, tokenOut, amountIn, amountOut, amountIn - amountInAfterFee);
     }
 
-    /**
-     * @dev Execute trade with tick boundary crossing detection and segmentation
-     * Implements the trade segmentation process from Section "Crossing Ticks"
-     */
-    function _executeTradeWithSegmentation(
-        uint256 tokenIn, 
-        uint256 tokenOut, 
-        uint256 amountIn
-    ) internal returns (uint256 totalAmountOut) {
-        uint256 remainingAmountIn = amountIn;
-        totalAmountOut = 0;
-        
-        while (remainingAmountIn > 0) {
-            // Step 1: Get consolidated tick data
-            (ConsolidatedTickData memory interiorData, ConsolidatedTickData memory boundaryData) = _getConsolidatedTickData();
-            
-            // Step 2: Calculate current total reserves
-            uint256[TOKENS_COUNT] memory totalReserves = _calculateTotalReserves(interiorData, boundaryData);
-            
-            // Step 3: Calculate trade assuming no boundary crossing
-            (uint256 potentialAmountOut, uint256[TOKENS_COUNT] memory newTotalReserves) = 
-                _calculateTradeWithGlobalInvariant(tokenIn, tokenOut, remainingAmountIn, totalReserves, interiorData, boundaryData);
-            
-            // Step 4: Check for tick boundary crossings
-            (bool hasCrossing, uint256 crossingAmountIn) = _checkTickBoundaryCrossing(
-                totalReserves, newTotalReserves, interiorData, boundaryData, remainingAmountIn
-            );
-            
-            if (!hasCrossing) {
-                // No crossing - execute full remaining trade
-                _updateTickReserves(tokenIn, tokenOut, remainingAmountIn, potentialAmountOut);
-                totalAmountOut += potentialAmountOut;
-                break;
-            } else {
-                // Execute trade up to crossing point
-                uint256 partialAmountOut = (potentialAmountOut * crossingAmountIn) / remainingAmountIn;
-                _updateTickReserves(tokenIn, tokenOut, crossingAmountIn, partialAmountOut);
-                
-                // Update tick statuses at crossing point
-                _updateTickStatusesAtCrossing(tokenIn, tokenOut, crossingAmountIn);
-                
-                totalAmountOut += partialAmountOut;
-                remainingAmountIn -= crossingAmountIn;
-            }
-        }
-    }
+        /**
+     * @dev Get total reserves across all ticks
 
     /**
      * @dev Get consolidated data for interior and boundary ticks
@@ -641,5 +609,195 @@ contract orbitalPool {
      */
     function getActiveTicks() external view returns (uint256[] memory) {
         return activeTicks;
+    }
+
+    /**
+     * @dev Get total reserves across all active ticks
+     */
+    function _getTotalReserves() internal view returns (uint256[TOKENS_COUNT] memory totalReserves) {
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            uint256 k = activeTicks[i];
+            Tick storage tick = ticks[k];
+            if (tick.r > 0) {
+                for (uint256 j = 0; j < TOKENS_COUNT; j++) {
+                    totalReserves[j] += tick.reserves[j];
+                }
+            }
+        }
+    }
+
+    /**
+     * @dev Calculate swap output maintaining torus invariant
+     * Adapted from reference implementation for fixed array structure
+     */
+    function _calculateSwapOutput(
+        uint256[TOKENS_COUNT] memory reserves,
+        uint256 tokenIn,
+        uint256 tokenOut,
+        uint256 amountIn
+    ) internal view returns (uint256) {
+        // Get current invariant
+        uint256 currentInvariant = _computeTorusInvariant(reserves);
+        
+        // Binary search for output amount that maintains invariant
+        uint256 low = 0;
+        uint256 high = reserves[tokenOut];
+        uint256 mid;
+        
+        // Use binary search for better accuracy
+        for (uint256 i = 0; i < 128; i++) {
+            mid = (low + high) / 2;
+            
+            uint256[TOKENS_COUNT] memory newReserves = reserves;
+            newReserves[tokenIn] += amountIn;
+            newReserves[tokenOut] -= mid;
+            
+            uint256 newInvariant = _computeTorusInvariant(newReserves);
+            
+            if (newInvariant > currentInvariant) {
+                high = mid;
+            } else {
+                low = mid;
+            }
+            
+            if (high - low <= 1) break;
+        }
+        
+        return low;
+    }
+
+    /**
+     * @dev Compute the torus invariant for given reserves
+     * Adapted from reference implementation
+     */
+    function _computeTorusInvariant(uint256[TOKENS_COUNT] memory reserves) internal view returns (uint256) {
+        uint256 sumSquares = 0;
+        for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+            sumSquares += reserves[i] * reserves[i];
+        }
+        
+        // Calculate projection onto equal price vector
+        uint256 projection = _calculateAlpha(reserves);
+        uint256 projectionSquared = projection * projection;
+        
+        // Get consolidated radius data
+        (uint256 totalInteriorRadiusSquared, uint256 totalBoundaryRadiusSquared, uint256 totalBoundaryConstantSquared) = _getConsolidatedRadiusData();
+        
+        uint256 radiusSum = totalInteriorRadiusSquared + totalBoundaryRadiusSquared;
+        
+        // Torus invariant: (sum(x_i^2) - (R_int^2 + R_bnd^2))^2 + 4*R_bnd^2*(<x,v>^2 - C_bnd^2)
+        uint256 term1 = sumSquares > radiusSum ? sumSquares - radiusSum : 0;
+        uint256 term1Squared = (term1 * term1) / PRECISION;
+        
+        uint256 term2 = 4 * totalBoundaryRadiusSquared * 
+                       (projectionSquared > totalBoundaryConstantSquared ? 
+                        projectionSquared - totalBoundaryConstantSquared : 0) / 
+                       PRECISION;
+        
+        return term1Squared + term2;
+    }
+
+    /**
+     * @dev Get consolidated radius data for torus invariant calculation
+     */
+    function _getConsolidatedRadiusData() internal view returns (
+        uint256 totalInteriorRadiusSquared,
+        uint256 totalBoundaryRadiusSquared, 
+        uint256 totalBoundaryConstantSquared
+    ) {
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            uint256 k = activeTicks[i];
+            Tick storage tick = ticks[k];
+            
+            if (tick.r == 0) continue;
+            
+            uint256 radiusSquared = (tick.r * tick.r) / PRECISION;
+            
+            if (tick.status == TickStatus.Interior) {
+                totalInteriorRadiusSquared += radiusSquared;
+            } else {
+                totalBoundaryRadiusSquared += radiusSquared;
+                uint256 constantSquared = (tick.k * tick.k) / PRECISION;
+                totalBoundaryConstantSquared += constantSquared;
+            }
+        }
+    }
+
+    /**
+     * @dev Update tick reserves and handle boundary crossings
+     * Adapted from reference implementation
+     */
+    function _updateTickReservesWithCrossings(uint256[TOKENS_COUNT] memory newTotalReserves) internal {
+        uint256 newProjection = _calculateAlpha(newTotalReserves);
+        
+        // Check each tick for boundary crossing
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            uint256 k = activeTicks[i];
+            Tick storage tick = ticks[k];
+            
+            if (tick.r == 0) continue;
+            
+            uint256 normalizedProjection = (newProjection * PRECISION) / tick.r;
+            uint256 normalizedBoundary = (tick.k * PRECISION) / tick.r;
+            
+            TickStatus oldStatus = tick.status;
+            TickStatus newStatus = (normalizedProjection < normalizedBoundary) ? TickStatus.Interior : TickStatus.Boundary;
+            
+            if (oldStatus != newStatus) {
+                tick.status = newStatus;
+                emit TickStatusChanged(k, oldStatus, newStatus);
+            }
+        }
+        
+        // Update reserves for all ticks proportionally
+        _updateIndividualTickReserves(newTotalReserves);
+    }
+
+    /**
+     * @dev Update individual tick reserves proportionally
+     */
+    function _updateIndividualTickReserves(uint256[TOKENS_COUNT] memory newTotalReserves) internal {
+        uint256 totalInteriorRadius = 0;
+        
+        // Sum interior tick radii for proportional distribution
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            uint256 k = activeTicks[i];
+            if (ticks[k].r > 0 && ticks[k].status == TickStatus.Interior) {
+                totalInteriorRadius += ticks[k].r;
+            }
+        }
+        
+        // Update each tick's reserves
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            uint256 k = activeTicks[i];
+            Tick storage tick = ticks[k];
+            
+            if (tick.r == 0) continue;
+            
+            if (tick.status == TickStatus.Interior && totalInteriorRadius > 0) {
+                // Interior ticks: proportional reserves based on radius
+                for (uint256 j = 0; j < TOKENS_COUNT; j++) {
+                    tick.reserves[j] = (newTotalReserves[j] * tick.r) / totalInteriorRadius;
+                }
+            } else if (tick.status == TickStatus.Boundary) {
+                // Boundary ticks: project to boundary while maintaining constraints
+                _projectTickToBoundary(k, newTotalReserves);
+            }
+        }
+    }
+
+    /**
+     * @dev Project tick reserves onto its boundary plane
+     */
+    function _projectTickToBoundary(uint256 k, uint256[TOKENS_COUNT] memory /* totalReserves */) internal {
+        Tick storage tick = ticks[k];
+        uint256 currentProjection = _calculateAlpha(tick.reserves);
+        
+        if (currentProjection != tick.k) {
+            // Adjust reserves to satisfy plane constraint: x·v = k
+            for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+                tick.reserves[i] = (tick.reserves[i] * tick.k) / currentProjection;
+            }
+        }
     }
 }
