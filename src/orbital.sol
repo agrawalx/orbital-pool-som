@@ -49,6 +49,7 @@ contract orbitalPool {
 
     // Events
     event LiquidityAdded(address indexed provider, uint256 k, uint256[TOKENS_COUNT] amounts, uint256 lpShares);
+    event LiquidityRemoved(address indexed provider, uint256 k, uint256[TOKENS_COUNT] amounts, uint256 lpShares);
     event Swap(address indexed trader, uint256 tokenIn, uint256 tokenOut, uint256 amountIn, uint256 amountOut, uint256 fee);
     event TickStatusChanged(uint256 k, TickStatus oldStatus, TickStatus newStatus);
     
@@ -59,6 +60,7 @@ contract orbitalPool {
     error InsufficientLiquidity();
     error InvalidTokenIndex();
     error SlippageExceeded();
+    error InsufficientLpShares();
 
     constructor(IERC20[TOKENS_COUNT] memory _tokens) {
         tokens = _tokens;
@@ -150,6 +152,116 @@ contract orbitalPool {
         ticks[k].totalLpShares += lpShares;
         
         emit LiquidityAdded(msg.sender, k, amounts, lpShares);
+    }
+
+    /**
+     * @dev Remove liquidity from a specific tick
+     * @param k The k value of the tick to remove liquidity from
+     * @param lpSharesToRemove The amount of LP shares to burn
+     * @param minAmountsOut Minimum amounts of each token to receive (slippage protection)
+     * @return amounts Array of token amounts returned to the user
+     */
+    function removeLiquidity(
+        uint256 k,
+        uint256 lpSharesToRemove,
+        uint256[TOKENS_COUNT] memory minAmountsOut
+    ) external returns (uint256[TOKENS_COUNT] memory amounts) {
+        // Validate inputs
+        if (k == 0) revert InvalidKValue();
+        if (lpSharesToRemove == 0) revert InvalidAmounts();
+        
+        Tick storage tick = ticks[k];
+        
+        // Check if tick exists
+        if (tick.r == 0) revert InsufficientLiquidity();
+        
+        // Check if user has enough LP shares
+        uint256 userShares = tick.lpShares[msg.sender];
+        if (userShares < lpSharesToRemove) revert InsufficientLpShares();
+        
+        // Calculate proportional amounts to return
+        // amounts[i] = (lpSharesToRemove * tick.reserves[i]) / tick.totalLpShares
+        for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+            amounts[i] = (lpSharesToRemove * tick.reserves[i]) / tick.totalLpShares;
+            
+            // Check slippage protection
+            if (amounts[i] < minAmountsOut[i]) revert SlippageExceeded();
+        }
+        
+        // Update tick reserves
+        for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+            tick.reserves[i] -= amounts[i];
+        }
+        
+        // Recalculate tick radius and liquidity after reserves update
+        uint256 newRadiusSquared = _calculateRadiusSquared(tick.reserves);
+        uint256 newRadius = _sqrt(newRadiusSquared);
+        
+        // Update tick data
+        tick.r = newRadius;
+        tick.liquidity = newRadius;
+        
+        // Update LP shares
+        tick.lpShares[msg.sender] -= lpSharesToRemove;
+        tick.totalLpShares -= lpSharesToRemove;
+        
+        // If this was the last liquidity provider, clean up the tick
+        if (tick.totalLpShares == 0) {
+            // Remove from active ticks
+            _removeFromActiveTicks(k);
+            
+            // Clear tick data
+            delete ticks[k];
+        } else {
+            // Update tick status based on new reserves
+            uint256 reserveConstraint = (newRadius * PRECISION) / SQRT5_SCALED;
+            TickStatus oldStatus = tick.status;
+            TickStatus newStatus = (reserveConstraint == k) ? TickStatus.Boundary : TickStatus.Interior;
+            
+            if (oldStatus != newStatus) {
+                tick.status = newStatus;
+                emit TickStatusChanged(k, oldStatus, newStatus);
+            }
+        }
+        
+        // Transfer tokens back to user
+        for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+            if (amounts[i] > 0) {
+                tokens[i].safeTransfer(msg.sender, amounts[i]);
+            }
+        }
+        
+        emit LiquidityRemoved(msg.sender, k, amounts, lpSharesToRemove);
+        
+        return amounts;
+    }
+
+    /**
+     * @dev Remove a tick from the active ticks array
+     * @param k The k value to remove
+     */
+    function _removeFromActiveTicks(uint256 k) internal {
+        if (!isActiveTick[k]) return;
+        
+        // Find the index of k in activeTicks array
+        uint256 indexToRemove = type(uint256).max;
+        for (uint256 i = 0; i < activeTicks.length; i++) {
+            if (activeTicks[i] == k) {
+                indexToRemove = i;
+                break;
+            }
+        }
+        
+        if (indexToRemove != type(uint256).max) {
+            // Move the last element to the position of the element to remove
+            activeTicks[indexToRemove] = activeTicks[activeTicks.length - 1];
+            
+            // Remove the last element
+            activeTicks.pop();
+            
+            // Update mapping
+            isActiveTick[k] = false;
+        }
     }
 
     /**

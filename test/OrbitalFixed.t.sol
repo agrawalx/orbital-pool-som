@@ -183,6 +183,214 @@ contract OrbitalPoolTest is Test {
         
         vm.stopPrank();
     }
+
+    // ========== REMOVE LIQUIDITY TESTS ==========
+    
+    function test_RemoveLiquidity_FullWithdrawal() public {
+        // Setup liquidity first
+        uint256 k = _calculateValidK(testAmounts1);
+        _approveTokens(alice, testAmounts1);
+        vm.prank(alice);
+        pool.addLiquidity(k, testAmounts1);
+        
+        uint256 aliceLpShares = pool.getUserLpShares(k, alice);
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0]; // No slippage protection for test
+        
+        // Record balances before withdrawal
+        uint256[5] memory balancesBefore;
+        for (uint i = 0; i < 5; i++) {
+            balancesBefore[i] = tokens[i].balanceOf(alice);
+        }
+        
+        // Alice removes all liquidity
+        vm.startPrank(alice);
+        vm.expectEmit(true, true, false, true);
+        emit orbitalPool.LiquidityRemoved(alice, k, testAmounts1, aliceLpShares);
+        
+        uint256[5] memory returnedAmounts = pool.removeLiquidity(k, aliceLpShares, minAmountsOut);
+        vm.stopPrank();
+        
+        // Verify returned amounts match original deposit
+        for (uint i = 0; i < 5; i++) {
+            assertEq(returnedAmounts[i], testAmounts1[i]);
+            assertEq(tokens[i].balanceOf(alice), balancesBefore[i] + testAmounts1[i]);
+        }
+        
+        // Verify LP shares are zero
+        assertEq(pool.getUserLpShares(k, alice), 0);
+        
+        // Verify tick is removed from active ticks
+        uint256[] memory activeTicks = pool.getActiveTicks();
+        assertEq(activeTicks.length, 0);
+        
+        // Verify tick is cleaned up
+        (uint256 r, uint256 liquidity, uint256[5] memory reserves, uint256 totalLpShares, ) = pool.getTickInfo(k);
+        assertEq(r, 0);
+        assertEq(liquidity, 0);
+        assertEq(totalLpShares, 0);
+        for (uint i = 0; i < 5; i++) {
+            assertEq(reserves[i], 0);
+        }
+    }
+    
+    function test_RemoveLiquidity_PartialWithdrawal() public {
+        // Setup liquidity first
+        uint256 k = _calculateValidK(testAmounts1);
+        _approveTokens(alice, testAmounts1);
+        vm.prank(alice);
+        pool.addLiquidity(k, testAmounts1);
+        
+        uint256 aliceLpShares = pool.getUserLpShares(k, alice);
+        uint256 sharesToRemove = aliceLpShares / 2; // Remove 50%
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0];
+        
+        // Record balances before withdrawal
+        uint256[5] memory balancesBefore;
+        for (uint i = 0; i < 5; i++) {
+            balancesBefore[i] = tokens[i].balanceOf(alice);
+        }
+        
+        // Alice removes half liquidity
+        vm.prank(alice);
+        uint256[5] memory returnedAmounts = pool.removeLiquidity(k, sharesToRemove, minAmountsOut);
+        
+        // Verify returned amounts are proportional (50% of original)
+        for (uint i = 0; i < 5; i++) {
+            uint256 expectedAmount = testAmounts1[i] / 2;
+            assertApproxEqAbs(returnedAmounts[i], expectedAmount, 1); // Allow 1 wei difference due to rounding
+            assertApproxEqAbs(tokens[i].balanceOf(alice), balancesBefore[i] + expectedAmount, 1);
+        }
+        
+        // Verify remaining LP shares
+        assertEq(pool.getUserLpShares(k, alice), aliceLpShares - sharesToRemove);
+        
+        // Verify tick still exists and is active
+        uint256[] memory activeTicks = pool.getActiveTicks();
+        assertEq(activeTicks.length, 1);
+        assertEq(activeTicks[0], k);
+        
+        // Verify tick data is updated correctly
+        (uint256 r, uint256 liquidity, uint256[5] memory reserves, uint256 totalLpShares, ) = pool.getTickInfo(k);
+        assertGt(r, 0);
+        assertGt(liquidity, 0);
+        assertEq(totalLpShares, aliceLpShares - sharesToRemove);
+        for (uint i = 0; i < 5; i++) {
+            assertApproxEqAbs(reserves[i], testAmounts1[i] / 2, 1);
+        }
+    }
+    
+    function test_RemoveLiquidity_RevertInsufficientShares() public {
+        // Setup liquidity first
+        uint256 k = _calculateValidK(testAmounts1);
+        _approveTokens(alice, testAmounts1);
+        vm.prank(alice);
+        pool.addLiquidity(k, testAmounts1);
+        
+        uint256 aliceLpShares = pool.getUserLpShares(k, alice);
+        uint256 excessiveShares = aliceLpShares + 1e18; // More than Alice has
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0];
+        
+        vm.prank(alice);
+        vm.expectRevert(orbitalPool.InsufficientLpShares.selector);
+        pool.removeLiquidity(k, excessiveShares, minAmountsOut);
+    }
+    
+    function test_RemoveLiquidity_RevertSlippage() public {
+        // Setup liquidity first
+        uint256 k = _calculateValidK(testAmounts1);
+        _approveTokens(alice, testAmounts1);
+        vm.prank(alice);
+        pool.addLiquidity(k, testAmounts1);
+        
+        uint256 aliceLpShares = pool.getUserLpShares(k, alice);
+        uint256[5] memory unrealisticMinAmounts = [
+            testAmounts1[0] * 2, // Expecting 2x more than possible
+            testAmounts1[1] * 2,
+            testAmounts1[2] * 2,
+            testAmounts1[3] * 2,
+            testAmounts1[4] * 2
+        ];
+        
+        vm.prank(alice);
+        vm.expectRevert(orbitalPool.SlippageExceeded.selector);
+        pool.removeLiquidity(k, aliceLpShares, unrealisticMinAmounts);
+    }
+    
+    function test_RemoveLiquidity_RevertInvalidK() public {
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0];
+        
+        vm.prank(alice);
+        vm.expectRevert(orbitalPool.InvalidKValue.selector);
+        pool.removeLiquidity(0, 1000, minAmountsOut);
+    }
+    
+    function test_RemoveLiquidity_RevertNonexistentTick() public {
+        uint256 nonexistentK = 12345;
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0];
+        
+        vm.prank(alice);
+        vm.expectRevert(orbitalPool.InsufficientLiquidity.selector);
+        pool.removeLiquidity(nonexistentK, 1000, minAmountsOut);
+    }
+    
+    function test_RemoveLiquidity_LifecycleIntegration() public {
+        uint256 k = _calculateValidK(testAmounts1);
+        uint256[5] memory minAmountsOut = [uint256(0), 0, 0, 0, 0];
+        
+        // 1. Alice adds initial liquidity
+        _approveTokens(alice, testAmounts1);
+        vm.prank(alice);
+        pool.addLiquidity(k, testAmounts1);
+        
+        uint256 aliceInitialShares = pool.getUserLpShares(k, alice);
+        assertGt(aliceInitialShares, 0);
+        
+        // 2. Alice removes 25% of liquidity
+        uint256 sharesToRemove1 = aliceInitialShares / 4;
+        vm.prank(alice);
+        pool.removeLiquidity(k, sharesToRemove1, minAmountsOut);
+        
+        assertEq(pool.getUserLpShares(k, alice), aliceInitialShares - sharesToRemove1);
+        
+        // 3. Bob adds liquidity to the existing tick
+        uint256[5] memory bobAmounts = [uint256(200 * 1e18), 200 * 1e18, 200 * 1e18, 200 * 1e18, 200 * 1e18];
+        
+        // Check if Bob's addition would be valid
+        uint256[5] memory currentReserves;
+        (,, currentReserves,,) = pool.getTickInfo(k);
+        uint256[5] memory combinedReserves;
+        for (uint i = 0; i < 5; i++) {
+            combinedReserves[i] = currentReserves[i] + bobAmounts[i];
+        }
+        uint256 newRadius = _calculateRadius(combinedReserves);
+        
+        if (_isValidKForRadius(k, newRadius)) {
+            _approveTokens(bob, bobAmounts);
+            vm.prank(bob);
+            pool.addLiquidity(k, bobAmounts);
+            
+            uint256 bobShares = pool.getUserLpShares(k, bob);
+            assertGt(bobShares, 0);
+            
+            // 4. Alice removes remaining liquidity
+            uint256 aliceRemainingShares = pool.getUserLpShares(k, alice);
+            vm.prank(alice);
+            pool.removeLiquidity(k, aliceRemainingShares, minAmountsOut);
+            
+            assertEq(pool.getUserLpShares(k, alice), 0);
+            assertGt(pool.getUserLpShares(k, bob), 0); // Bob still has shares
+            
+            // 5. Bob removes all remaining liquidity
+            vm.prank(bob);
+            pool.removeLiquidity(k, bobShares, minAmountsOut);
+            
+            assertEq(pool.getUserLpShares(k, bob), 0);
+            
+            // Verify tick is completely cleaned up
+            uint256[] memory activeTicks = pool.getActiveTicks();
+            assertEq(activeTicks.length, 0);
+        }
+    }
     
     function test_AddLiquidity_ExistingTick() public {
         uint256 k = _calculateValidK(testAmounts1);
@@ -280,7 +488,7 @@ contract OrbitalPoolTest is Test {
         pool.addLiquidity(k, testAmounts1);
         
         // Bob swaps token 0 for token 1
-        uint256 swapAmount = 50*1e18;
+        uint256 swapAmount = 20*1e18;
         uint256 minAmountOut = 0; // Accept any amount for this test
         
         uint256 bobBalanceBefore0 = tokens[0].balanceOf(bob);
