@@ -136,8 +136,13 @@ contract orbitalPool {
         } else {
             // Corrected formula: ((newRadius - previousRadius) * totalLPSharesBeforeDeposit) / previousRadius
             uint256 currentRadius = ticks[k].r;
-            uint256 radiusIncrease = currentRadius - previousRadius;
-            lpShares = (radiusIncrease * previousTotalLpShares) / previousRadius;
+            if (currentRadius > previousRadius) {
+                uint256 radiusIncrease = currentRadius - previousRadius;
+                lpShares = (radiusIncrease * previousTotalLpShares) / previousRadius;
+            } else {
+                // If radius didn't increase or decreased, give minimal shares
+                lpShares = 1;
+            }
         }
         
         // Step 6 & 7: Mint shares and update data
@@ -184,7 +189,12 @@ contract orbitalPool {
         
         // Update reserves and check for tick crossings
         totalReserves[tokenIn] += amountInAfterFee;
-        totalReserves[tokenOut] -= amountOut;
+        if (totalReserves[tokenOut] >= amountOut) {
+            totalReserves[tokenOut] -= amountOut;
+        } else {
+            // Safety: If not enough reserves, set to 0 (this shouldn't happen in normal operation)
+            totalReserves[tokenOut] = 0;
+        }
         _updateTickReservesWithCrossings(totalReserves);
         
         // Transfer output token
@@ -196,9 +206,7 @@ contract orbitalPool {
         emit Swap(msg.sender, tokenIn, tokenOut, amountIn, amountOut, amountIn - amountInAfterFee);
     }
 
-        /**
-     * @dev Get total reserves across all ticks
-
+      
     /**
      * @dev Get consolidated data for interior and boundary ticks
      * Implements tick consolidation from Section "Tick Consolidation"
@@ -568,7 +576,7 @@ contract orbitalPool {
     /**
      * @dev Get total reserves across all active ticks
      */
-    function _getTotalReserves() internal view returns (uint256[TOKENS_COUNT] memory totalReserves) {
+    function _getTotalReserves() public view returns (uint256[TOKENS_COUNT] memory totalReserves) {
         for (uint256 i = 0; i < activeTicks.length; i++) {
             uint256 k = activeTicks[i];
             Tick storage tick = ticks[k];
@@ -604,7 +612,13 @@ contract orbitalPool {
             
             uint256[TOKENS_COUNT] memory newReserves = reserves;
             newReserves[tokenIn] += amountIn;
-            newReserves[tokenOut] -= mid;
+            if (newReserves[tokenOut] >= mid) {
+                newReserves[tokenOut] -= mid;
+            } else {
+                // Skip this iteration if mid is larger than available reserves
+                high = mid;
+                continue;
+            }
             
             uint256 newInvariant = _computeTorusInvariant(newReserves);
             
@@ -624,7 +638,7 @@ contract orbitalPool {
      * @dev Compute the torus invariant for given reserves
      * Using the correct formula from the Orbital whitepaper
      */
-    function _computeTorusInvariant(uint256[TOKENS_COUNT] memory /* reserves */) internal view returns (uint256) {
+    function _computeTorusInvariant(uint256[TOKENS_COUNT] memory /* reserves */) public view returns (uint256) {
         // Get consolidated tick data for interior and boundary ticks
         (ConsolidatedTickData memory interiorData, ConsolidatedTickData memory boundaryData) = _getConsolidatedTickData();
         

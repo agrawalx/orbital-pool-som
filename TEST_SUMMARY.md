@@ -170,3 +170,5 @@ Suite result: 13 passed; 0 failed; 0 skipped
 ✅ **18-decimal token compatibility**  
 
 The test suite provides **complete coverage** of the Orbital pool contract functionality using 5 mock 18-decimal stablecoins as requested. All mathematical formulas are validated, gas usage is optimized, and edge cases are thoroughly tested.
+
+
