@@ -171,7 +171,7 @@ contract orbitalPool {
         // Get current total reserves across all ticks
         uint256[TOKENS_COUNT] memory totalReserves = _getTotalReserves();
         
-        // Calculate output amount using torus invariant
+                // Calculate output amount using torus invariant
         amountOut = _calculateSwapOutput(
             totalReserves,
             tokenIn,
@@ -622,33 +622,56 @@ contract orbitalPool {
 
     /**
      * @dev Compute the torus invariant for given reserves
-     * Adapted from reference implementation
+     * Using the correct formula from the Orbital whitepaper
      */
-    function _computeTorusInvariant(uint256[TOKENS_COUNT] memory reserves) internal view returns (uint256) {
-        uint256 sumSquares = 0;
+    function _computeTorusInvariant(uint256[TOKENS_COUNT] memory /* reserves */) internal view returns (uint256) {
+        // Get consolidated tick data for interior and boundary ticks
+        (ConsolidatedTickData memory interiorData, ConsolidatedTickData memory boundaryData) = _getConsolidatedTickData();
+        
+        // First term: (1/√n * Σ(x_int,i) - k_bound - r_int * √n)²
+        uint256 sqrtN = _sqrt(TOKENS_COUNT * PRECISION * PRECISION); // √5 scaled
+        
+        // Sum of interior reserves only
+        uint256 sumInteriorReserves = 0;
         for (uint256 i = 0; i < TOKENS_COUNT; i++) {
-            sumSquares += reserves[i] * reserves[i];
+            sumInteriorReserves += interiorData.totalReserves[i];
         }
         
-        // Calculate projection onto equal price vector
-        uint256 projection = _calculateAlpha(reserves);
-        uint256 projectionSquared = projection * projection;
+        // Calculate first term components
+        uint256 firstComponent = (sumInteriorReserves * PRECISION) / sqrtN; // (1/√n) * Σ(x_int,i)
+        uint256 secondComponent = boundaryData.totalKBound; // k_bound  
+        uint256 thirdComponent = (interiorData.consolidatedRadius * sqrtN) / PRECISION; // r_int * √n
         
-        // Get consolidated radius data
-        (uint256 totalInteriorRadiusSquared, uint256 totalBoundaryRadiusSquared, uint256 totalBoundaryConstantSquared) = _getConsolidatedRadiusData();
+        // First term: ((1/√n * Σ(x_int,i)) - k_bound - r_int * √n)²
+        uint256 term1Sum = firstComponent > (secondComponent + thirdComponent) ? 
+            firstComponent - secondComponent - thirdComponent : 0;
+        uint256 term1 = (term1Sum * term1Sum) / PRECISION;
         
-        uint256 radiusSum = totalInteriorRadiusSquared + totalBoundaryRadiusSquared;
+        // Second term: (√(Σ(x_total,i)²) - (1/n)(Σ(x_total,i))² - r_bound²)²
+        // Sum of all reserves (interior + boundary)
+        uint256 sumTotalReserves = 0;
+        uint256 sumTotalReservesSquared = 0;
+        for (uint256 i = 0; i < TOKENS_COUNT; i++) {
+            uint256 totalReserve = interiorData.totalReserves[i] + boundaryData.totalReserves[i];
+            sumTotalReserves += totalReserve;
+            sumTotalReservesSquared += (totalReserve * totalReserve) / PRECISION;
+        }
         
-        // Torus invariant: (sum(x_i^2) - (R_int^2 + R_bnd^2))^2 + 4*R_bnd^2*(<x,v>^2 - C_bnd^2)
-        uint256 term1 = sumSquares > radiusSum ? sumSquares - radiusSum : 0;
-        uint256 term1Squared = (term1 * term1) / PRECISION;
+        // Calculate (1/n)(Σ(x_total,i))²
+        uint256 sumTotalReserves_sq = (sumTotalReserves * sumTotalReserves) / PRECISION;
+        uint256 sum_sq_div_n = sumTotalReserves_sq / TOKENS_COUNT;
+
+        // Second term: (√(Σ(x_total,i)² - (1/n)(Σ(x_total,i))²) - r_bound)²
+        uint256 term2Component = 0;
+        if (sumTotalReservesSquared > sum_sq_div_n) { // Use the corrected value here
+            uint256 sqrtTerm = _sqrt((sumTotalReservesSquared - sum_sq_div_n) * PRECISION);
+            term2Component = sqrtTerm > boundaryData.consolidatedRadius ? 
+            sqrtTerm - boundaryData.consolidatedRadius : 0;
+        }
         
-        uint256 term2 = 4 * totalBoundaryRadiusSquared * 
-                       (projectionSquared > totalBoundaryConstantSquared ? 
-                        projectionSquared - totalBoundaryConstantSquared : 0) / 
-                       PRECISION;
+        uint256 term2 = (term2Component * term2Component) / PRECISION;
         
-        return term1Squared + term2;
+        return term1 + term2;
     }
 
     /**
