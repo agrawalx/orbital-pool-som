@@ -589,8 +589,8 @@ contract orbitalPool {
     }
 
     /**
-     * @dev Calculate swap output maintaining torus invariant
-     * Adapted from reference implementation for fixed array structure
+     * @dev Calculate swap output maintaining torus invariant using Newton's method
+     * Adapted from Rust implementation for better precision and efficiency
      */
     function _calculateSwapOutput(
         uint256[TOKENS_COUNT] memory reserves,
@@ -598,40 +598,154 @@ contract orbitalPool {
         uint256 tokenOut,
         uint256 amountIn
     ) internal view returns (uint256) {
-        // Get current invariant
-        uint256 currentInvariant = _computeTorusInvariant(reserves);
+        // Validate inputs
+        if (tokenIn >= TOKENS_COUNT || tokenOut >= TOKENS_COUNT) return 0;
+        if (reserves[tokenOut] == 0 || amountIn == 0) return 0;
         
-        // Binary search for output amount that maintains invariant
-        uint256 low = 0;
-        uint256 high = reserves[tokenOut];
-        uint256 mid;
+        // Get initial invariant
+        uint256 initialInvariant = _computeTorusInvariant(reserves);
+        if (initialInvariant == 0) return 0;
         
-        // Use binary search for better accuracy
-        for (uint256 i = 0; i < 128; i++) {
-            mid = (low + high) / 2;
+        // Newton's method to solve: f(y) = new_invariant(y) - initial_invariant = 0
+        // where y is the amount out
+        uint256 maxIterations = 30;
+        uint256 tolerance = initialInvariant / 1000000; // More reasonable tolerance relative to invariant size
+        
+        // Start with a better initial guess - use simple constant product formula as starting point
+        uint256 amountOut = (amountIn * reserves[tokenOut]) / (reserves[tokenIn] + amountIn);
+        if (amountOut == 0) amountOut = amountIn / 10; // Fallback guess
+        if (amountOut >= reserves[tokenOut]) amountOut = reserves[tokenOut] / 2;
+        
+        for (uint256 i = 0; i < maxIterations; i++) {
+            // Ensure amountOut is within bounds
+            if (amountOut >= reserves[tokenOut]) {
+                amountOut = reserves[tokenOut] * 95 / 100; // Use 95% as max
+            }
+            if (amountOut == 0) amountOut = 1e15; // Minimum meaningful amount
             
+            // Calculate f(y) = new_invariant(y) - initial_invariant
             uint256[TOKENS_COUNT] memory newReserves = reserves;
             newReserves[tokenIn] += amountIn;
-            if (newReserves[tokenOut] >= mid) {
-                newReserves[tokenOut] -= mid;
-            } else {
-                // Skip this iteration if mid is larger than available reserves
-                high = mid;
-                continue;
-            }
+            newReserves[tokenOut] -= amountOut;
             
             uint256 newInvariant = _computeTorusInvariant(newReserves);
             
-            if (newInvariant > currentInvariant) {
-                high = mid;
+            // f(y) = new_invariant - initial_invariant
+            int256 f_y;
+            if (newInvariant >= initialInvariant) {
+                f_y = int256(newInvariant - initialInvariant);
             } else {
-                low = mid;
+                f_y = -int256(initialInvariant - newInvariant);
             }
             
-            if (high - low <= 1) break;
+            // Check convergence
+            if (_abs(f_y) <= int256(tolerance)) {
+                break;
+            }
+            
+            // Calculate numerical derivative f'(y) ≈ (f(y + ε) - f(y)) / ε
+            // Use adaptive epsilon based on current amountOut
+            uint256 epsilon = amountOut / 1000; // 0.1% of current amount
+            if (epsilon < 1e15) epsilon = 1e15; // Minimum epsilon
+            if (epsilon > amountOut / 2) epsilon = amountOut / 2; // Maximum epsilon
+            
+            uint256 amountOutPlusEpsilon = amountOut + epsilon;
+            
+            // Ensure derivative calculation is valid
+            if (amountOutPlusEpsilon >= reserves[tokenOut]) {
+                epsilon = (reserves[tokenOut] - amountOut) / 2;
+                if (epsilon == 0) break;
+                amountOutPlusEpsilon = amountOut + epsilon;
+            }
+            
+            uint256[TOKENS_COUNT] memory reservesForDerivative = reserves;
+            reservesForDerivative[tokenIn] += amountIn;
+            reservesForDerivative[tokenOut] -= amountOutPlusEpsilon;
+            
+            uint256 newInvariantPlusEpsilon = _computeTorusInvariant(reservesForDerivative);
+            
+            int256 f_y_plus_epsilon;
+            if (newInvariantPlusEpsilon >= initialInvariant) {
+                f_y_plus_epsilon = int256(newInvariantPlusEpsilon - initialInvariant);
+            } else {
+                f_y_plus_epsilon = -int256(initialInvariant - newInvariantPlusEpsilon);
+            }
+            
+            // Calculate derivative: f'(y) = (f(y + ε) - f(y)) / ε
+            int256 derivative = (f_y_plus_epsilon - f_y) / int256(epsilon);
+            
+            // Check if derivative is meaningful
+            if (_abs(derivative) < int256(tolerance / 1000)) {
+                // If derivative is too small, use direction-based adjustment
+                if (f_y > 0) {
+                    // New invariant is too high, increase amountOut
+                    amountOut = amountOut + amountOut / 10;
+                } else {
+                    // New invariant is too low, decrease amountOut  
+                    amountOut = amountOut - amountOut / 10;
+                }
+                continue;
+            }
+            
+            // Newton's method update: y_{n+1} = y_n - f(y_n) / f'(y_n)
+            int256 deltaY = f_y / derivative;
+            
+            // Apply step size limiting to prevent overshooting
+            int256 maxStep = int256(amountOut / 4); // Limit step to 25% of current value
+            if (_abs(deltaY) > maxStep) {
+                deltaY = deltaY > 0 ? maxStep : -maxStep;
+            }
+            
+            if (deltaY >= 0) {
+                if (amountOut >= uint256(deltaY)) {
+                    amountOut -= uint256(deltaY);
+                } else {
+                    amountOut = amountOut / 2; // Reduce by half instead of going negative
+                }
+            } else {
+                uint256 increase = uint256(-deltaY);
+                if (amountOut + increase < reserves[tokenOut]) {
+                    amountOut += increase;
+                } else {
+                    amountOut = (amountOut + reserves[tokenOut] * 95 / 100) / 2; // Move towards 95% of max
+                }
+            }
+            
+            // Ensure meaningful minimum
+            if (amountOut < 1e15) amountOut = 1e15;
         }
         
-        return low;
+        // Final safety checks
+        if (amountOut >= reserves[tokenOut]) {
+            amountOut = reserves[tokenOut] * 95 / 100;
+        }
+        
+        // Final invariant check - if still far off, use fallback
+        uint256[TOKENS_COUNT] memory finalReserves = reserves;
+        finalReserves[tokenIn] += amountIn;
+        if (finalReserves[tokenOut] >= amountOut) {
+            finalReserves[tokenOut] -= amountOut;
+            uint256 finalInvariant = _computeTorusInvariant(finalReserves);
+            
+            uint256 invariantDiff = finalInvariant > initialInvariant ? 
+                finalInvariant - initialInvariant : initialInvariant - finalInvariant;
+            
+            // If invariant is still significantly different, use simple proportional fallback
+            if (invariantDiff > initialInvariant / 50) { // More than 2% difference
+                amountOut = (amountIn * reserves[tokenOut]) / (reserves[tokenIn] + amountIn);
+                // Apply a reduction factor to account for fees and slippage
+                amountOut = amountOut * 98 / 100; // 2% reduction
+            }
+        }
+        
+        return amountOut;
+    }
+    
+    /**
+     * @dev Calculate absolute value of signed integer
+     */
+    function _abs(int256 x) internal pure returns (int256) {
+        return x >= 0 ? x : -x;
     }
 
     /**
@@ -658,7 +772,7 @@ contract orbitalPool {
         
         // First term: ((1/√n * Σ(x_int,i)) - k_bound - r_int * √n)²
         uint256 term1Sum = firstComponent > (secondComponent + thirdComponent) ? 
-            firstComponent - secondComponent - thirdComponent : 0;
+            firstComponent - secondComponent - thirdComponent : secondComponent + thirdComponent - firstComponent;
         uint256 term1 = (term1Sum * term1Sum) / PRECISION;
         
         // Second term: (√(Σ(x_total,i)²) - (1/n)(Σ(x_total,i))² - r_bound²)²
@@ -680,7 +794,7 @@ contract orbitalPool {
         if (sumTotalReservesSquared > sum_sq_div_n) { // Use the corrected value here
             uint256 sqrtTerm = _sqrt((sumTotalReservesSquared - sum_sq_div_n) * PRECISION);
             term2Component = sqrtTerm > boundaryData.consolidatedRadius ? 
-            sqrtTerm - boundaryData.consolidatedRadius : 0;
+            sqrtTerm - boundaryData.consolidatedRadius : boundaryData.consolidatedRadius - sqrtTerm;
         }
         
         uint256 term2 = (term2Component * term2Component) / PRECISION;

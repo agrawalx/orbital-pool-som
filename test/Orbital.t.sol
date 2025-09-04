@@ -293,7 +293,7 @@ contract OrbitalPoolTest is Test {
         // Verify balances changed
         assertEq(tokens[0].balanceOf(bob), bobBalanceBefore0 - swapAmount);
         assertEq(tokens[1].balanceOf(bob), bobBalanceBefore1 + amountOut);
-        
+        console.log(tokens[1].balanceOf(bob));
         // Verify output amount is reasonable
         assertGt(amountOut, minAmountOut);
         assertLt(amountOut, swapAmount); // Should be less due to fees and slippage
