@@ -11,42 +11,47 @@ export const TOKENS = [
   {
     symbol: "USDC",
     name: "USD Coin",
-    address: "0xA0b86991c431C17C95E4808E3a230BD3f53A03d",
+    address: "0xA0b86991c431C17C95E4808E3a230BD3f53A03d", // tokens[0] in contract
     decimals: 6,
     logo: "/tokens/usdc.svg",
     color: "#2775CA",
+    index: 0, // Contract token index
   },
   {
     symbol: "USDT",
     name: "Tether USD",
-    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // tokens[1] in contract
     decimals: 6,
     logo: "/tokens/usdt.svg",
     color: "#26A17B",
+    index: 1,
   },
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
-    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", // tokens[2] in contract
     decimals: 18,
     logo: "/tokens/dai.svg",
     color: "#F5AC37",
+    index: 2,
   },
   {
     symbol: "FRAX",
     name: "Frax",
-    address: "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+    address: "0x853d955aCEf822Db058eb8505911ED77F175b99e", // tokens[3] in contract
     decimals: 18,
     logo: "/tokens/frax.svg",
     color: "#000000",
+    index: 3,
   },
   {
     symbol: "LUSD",
     name: "Liquity USD",
-    address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+    address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0", // tokens[4] in contract
     decimals: 18,
     logo: "/tokens/lusd.svg",
     color: "#745DDF",
+    index: 4,
   },
 ] as const;
 

@@ -20,10 +20,13 @@ export const config = getDefaultConfig({
 
 // Contract addresses
 export const CONTRACTS = {
-  ORBITAL_POOL: process.env.NEXT_PUBLIC_ORBITAL_POOL_ADDRESS || '0x1234567890123456789012345678901234567890',
-  USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum USDC
-  USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum USDT
-  DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',  // Arbitrum DAI
+  ORBITAL_POOL: process.env.NEXT_PUBLIC_ORBITAL_POOL_ADDRESS || '0x0000000000000000000000000000000000000000', // Deploy contract and update this
+  // Token addresses (these should match the tokens array in the orbital pool contract)
+  USDC: '0xA0b86991c431C17C95E4808E3a230BD3f53A03d', // tokens[0]
+  USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // tokens[1] 
+  DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',  // tokens[2]
+  FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e', // tokens[3]
+  LUSD: '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0', // tokens[4]
 } as const;
 
 // Chain configuration
