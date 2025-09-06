@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { TokenSelector } from '@/components/ui/TokenSelector'
 import { OrbitalSpinner } from '@/components/ui/LoadingSpinner'
 import { TOKENS } from '@/lib/constants'
-import { useOrbitalAMM, parseTokenAmount, formatTokenAmount } from '@/hooks/useOrbitalAMM'
+import { useOrbitalAMM, parseTokenAmount, formatTokenAmount } from '@/hooks/useOrbitalAMM.ts'
 import { formatNumber, formatCurrency } from '@/lib/utils'
 import { useAccount } from 'wagmi'
 
