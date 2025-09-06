@@ -8,22 +8,24 @@ import { cn } from '@/lib/utils'
 import { TOKENS } from '@/lib/constants'
 
 interface TokenSelectorProps {
-  selectedToken: typeof TOKENS[number] | null
-  onTokenSelect: (token: typeof TOKENS[number]) => void
-  excludeTokens?: string[]
+  selectedToken: typeof TOKENS[number]
+  onSelect: (token: typeof TOKENS[number]) => void
+  excludeTokens?: typeof TOKENS[number][]
   className?: string
 }
 
 export function TokenSelector({ 
   selectedToken, 
-  onTokenSelect, 
+  onSelect, 
   excludeTokens = [],
   className 
 }: TokenSelectorProps) {
-  const availableTokens = TOKENS.filter(token => !excludeTokens.includes(token.symbol))
+  const availableTokens = TOKENS.filter(token => 
+    !excludeTokens.some(excludeToken => excludeToken.symbol === token.symbol)
+  )
 
   return (
-    <Listbox value={selectedToken} onChange={onTokenSelect}>
+    <Listbox value={selectedToken} onChange={onSelect}>
       <div className={cn("relative", className)}>
         <Listbox.Button className="relative w-full cursor-pointer glass-morphism rounded-xl py-3 pl-4 pr-10 text-left border border-cyan-500/20 hover:border-cyan-500/40 focus:border-cyan-500/60 focus:outline-none transition-all duration-300">
           {selectedToken ? (

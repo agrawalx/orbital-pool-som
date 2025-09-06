@@ -1,58 +1,173 @@
 /**
  * Orbital AMM - Wallet Hook
  * 
- * Custom hook for wallet connection and state management.
+ * Custom hook for wallet connection and state management using Ethers.js.
  * 
  * @author Orbital Protocol Team
  * @version 1.0.0
  */
 'use client';
 
-import { useAccount, useConnect, useDisconnect, useBalance, useChainId, useSwitchChain } from 'wagmi';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { DEFAULT_CHAIN, SUPPORTED_CHAINS } from '@/lib/wallet';
-import { formatUnits } from 'viem';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  connectWallet as connectEthersWallet,
+  disconnectWallet,
+  getWalletAddress,
+  getETHBalance,
+  formatAddress,
+  isWalletConnected,
+  switchToSomniaTestnet,
+  SOMNIA_TESTNET,
+} from '@/lib/ethers-provider';
 
 export function useWallet() {
-  const { address, isConnected, isConnecting } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { openConnectModal } = useConnectModal();
-  const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [balance, setBalance] = useState('0.0000 STT');
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+  const [chainId, setChainId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get ETH balance
-  const { data: balance, isLoading: isBalanceLoading } = useBalance({
-    address,
-  });
+  // Check if wallet is connected on mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (typeof window !== 'undefined' && window.ethereum && isWalletConnected()) {
+        try {
+          const addr = await getWalletAddress();
+          if (addr) {
+            setAddress(addr);
+            setIsConnected(true);
+            await updateBalance(addr);
+            await updateChainId();
+          }
+        } catch (error) {
+          console.error('Error checking wallet connection:', error);
+        }
+      }
+    };
+
+    checkConnection();
+  }, []);
+
+  // Listen for account changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      const handleAccountsChanged = (accounts: string[]) => {
+        if (accounts.length === 0) {
+          // Wallet disconnected
+          setAddress(null);
+          setIsConnected(false);
+          setBalance('0.0000 ETH');
+          disconnectWallet();
+        } else {
+          // Account changed
+          setAddress(accounts[0]);
+          setIsConnected(true);
+          updateBalance(accounts[0]);
+        }
+      };
+
+      const handleChainChanged = (chainId: string) => {
+        const newChainId = parseInt(chainId, 16);
+        setChainId(newChainId);
+      };
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum?.removeListener('chainChanged', handleChainChanged);
+      };
+    }
+  }, []);
+
+  const updateBalance = async (addr?: string) => {
+    setIsBalanceLoading(true);
+    try {
+      const sttBalance = await getETHBalance(addr);
+      // Format balance to show reasonable decimal places (4 digits)
+      const formattedBalance = parseFloat(sttBalance).toFixed(4);
+      setBalance(`${formattedBalance} STT`);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      setBalance('0.0000 STT');
+    } finally {
+      setIsBalanceLoading(false);
+    }
+  };
+
+  const updateChainId = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        setChainId(parseInt(chainId, 16));
+      } catch (error) {
+        console.error('Error getting chain ID:', error);
+      }
+    }
+  };
+
+  const connectWallet = useCallback(async () => {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      setError('MetaMask is not installed. Please install MetaMask to continue.');
+      return;
+    }
+
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      const signer = await connectEthersWallet();
+      if (signer) {
+        const addr = await signer.getAddress();
+        setAddress(addr);
+        setIsConnected(true);
+        await updateBalance(addr);
+        await updateChainId();
+      }
+    } catch (error: any) {
+      console.error('Failed to connect wallet:', error);
+      setError(error.message || 'Failed to connect wallet');
+    } finally {
+      setIsConnecting(false);
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    disconnectWallet();
+    setAddress(null);
+    setIsConnected(false);
+    setBalance('0.0000 STT');
+    setChainId(null);
+    setError(null);
+  }, []);
+
+  const switchToSupportedChain = useCallback(async () => {
+    try {
+      await switchToSomniaTestnet();
+      await updateChainId();
+    } catch (error: any) {
+      console.error('Failed to switch network:', error);
+      setError(error.message || 'Failed to switch network');
+    }
+  }, []);
 
   // Check if on supported chain
-  const isSupportedChain = chainId && Object.keys(SUPPORTED_CHAINS).includes(chainId.toString());
-  const currentChain = chainId && SUPPORTED_CHAINS[chainId as keyof typeof SUPPORTED_CHAINS];
-
-  // Format balance for display
-  const formattedBalance = balance 
-    ? `${parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}`
-    : '0.0000 ETH';
-
-  // Connect wallet function
-  const connectWallet = () => {
-    if (openConnectModal) {
-      openConnectModal();
-    }
-  };
-
-  // Switch to supported chain
-  const switchToSupportedChain = () => {
-    if (switchChain) {
-      switchChain({ chainId: DEFAULT_CHAIN.id });
-    }
-  };
-
+  const isSupportedChain = chainId === SOMNIA_TESTNET.chainId;
+  
   // Truncate address for display
-  const truncatedAddress = address 
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : '';
+  const truncatedAddress = address ? formatAddress(address) : '';
+
+  // Current chain info
+  const currentChain = isSupportedChain
+    ? {
+        name: SOMNIA_TESTNET.name,
+        rpcUrl: SOMNIA_TESTNET.rpcUrl,
+        blockExplorer: SOMNIA_TESTNET.blockExplorer,
+      }
+    : null;
 
   return {
     // Connection state
@@ -60,9 +175,10 @@ export function useWallet() {
     isConnected,
     isConnecting,
     truncatedAddress,
+    error,
     
     // Balance
-    balance: formattedBalance,
+    balance,
     isBalanceLoading,
     
     // Chain info
@@ -74,8 +190,6 @@ export function useWallet() {
     connectWallet,
     disconnect,
     switchToSupportedChain,
-    
-    // Available connectors
-    connectors,
+    updateBalance: () => updateBalance(address || undefined),
   };
 }

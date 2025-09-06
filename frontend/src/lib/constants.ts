@@ -11,8 +11,8 @@ export const TOKENS = [
   {
     symbol: "USDC",
     name: "USD Coin",
-    address: "0xA0b86991c431C17C95E4808E3a230BD3f53A03d", // tokens[0] in contract
-    decimals: 6,
+    address: "0x4880dF7c01b31aEa71AEB41C1a29513598675A9B", // tokens[0] in contract
+    decimals: 18,
     logo: "/tokens/usdc.svg",
     color: "#2775CA",
     index: 0, // Contract token index
@@ -20,8 +20,8 @@ export const TOKENS = [
   {
     symbol: "USDT",
     name: "Tether USD",
-    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // tokens[1] in contract
-    decimals: 6,
+    address: "0x47b5F881263668fe62eA532845DbEBba6896fF83", // tokens[1] in contract
+    decimals: 18,
     logo: "/tokens/usdt.svg",
     color: "#26A17B",
     index: 1,
@@ -29,7 +29,7 @@ export const TOKENS = [
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
-    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", // tokens[2] in contract
+    address: "0xD6c42FF19FC1E31fc01dbEE4115a9dE39143Fc74", // tokens[2] in contract
     decimals: 18,
     logo: "/tokens/dai.svg",
     color: "#F5AC37",
@@ -38,7 +38,7 @@ export const TOKENS = [
   {
     symbol: "FRAX",
     name: "Frax",
-    address: "0x853d955aCEf822Db058eb8505911ED77F175b99e", // tokens[3] in contract
+    address: "0x0B96b05940972F5f27f2e4FfccD79FCaF068f7FF", // tokens[3] in contract
     decimals: 18,
     logo: "/tokens/frax.svg",
     color: "#000000",
@@ -47,7 +47,7 @@ export const TOKENS = [
   {
     symbol: "LUSD",
     name: "Liquity USD",
-    address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0", // tokens[4] in contract
+    address: "0xCBe8635Ca41e625588cd72007b6653Bd68cEd20B", // tokens[4] in contract
     decimals: 18,
     logo: "/tokens/lusd.svg",
     color: "#745DDF",
@@ -57,7 +57,7 @@ export const TOKENS = [
 
 // Pool configuration
 export const POOL_CONFIG = {
-  address: "0x1234567890123456789012345678901234567890",
+  address: "0x0bb910695e728149Ae3A52f186E972bC295d7a26",
   fee: 0.003, // 0.3%
   maxSlippage: 0.05, // 5%
   minLiquidity: 1000,

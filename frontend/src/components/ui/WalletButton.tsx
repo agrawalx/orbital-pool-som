@@ -88,7 +88,7 @@ export function WalletButton({ className = '' }: WalletButtonProps) {
 
   // Connected state
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative z-50 ${className}`}>
       <motion.button
         onClick={() => setShowDropdown(!showDropdown)}
         className="
@@ -140,7 +140,7 @@ export function WalletButton({ className = '' }: WalletButtonProps) {
             className="
               absolute top-full right-0 mt-2 w-64
               glass-morphism-dark rounded-xl border border-green-500/20
-              shadow-2xl z-50
+              shadow-2xl z-[9999]
             "
           >
             <div className="p-4 space-y-4">

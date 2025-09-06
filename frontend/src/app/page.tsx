@@ -3,16 +3,14 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navigation } from '@/components/Navigation'
-import { SwapInterface } from '@/components/SwapInterface'
-import { LiquidityInterface } from '@/components/LiquidityInterface'
+import { SwapInterface } from '@/components/SwapInterfaceEthers'
+import { LiquidityInterface } from '@/components/LiquidityInterfaceEthers'
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard'
 import { GeometricBackground } from '@/components/ui/GeometricBackground'
 import { ParticleField, NeuralNetwork } from '@/components/ui/PremiumEffects'
-
 import { FloatingActions } from '@/components/ui/FloatingActions'
-import { NotificationProvider } from '@/components/ui/NotificationSystem'
-import { PerformanceOptimizer } from '@/components/ui/PerformanceOptimizer'
-import { WalletProvider } from '@/components/providers/WalletProvider'
+import { Web3Provider } from '@/components/providers/Web3Provider'
+import { Toaster } from 'react-hot-toast'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'swap' | 'liquidity' | 'analytics'>('swap')
@@ -57,11 +55,20 @@ export default function Home() {
   }
 
   return (
-    <WalletProvider>
-    <NotificationProvider>
+    <Web3Provider>
     <div className="min-h-screen relative overflow-hidden">
-      {/* Performance Optimizer */}
-      <PerformanceOptimizer />
+      {/* Toaster for notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#1f2937',
+            color: '#fff',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+          },
+        }}
+      />
       
       {/* Premium Background Effects */}
       <ParticleField />
@@ -467,7 +474,6 @@ export default function Home() {
       {/* Floating Actions */}
       <FloatingActions />
     </div>
-    </NotificationProvider>
-    </WalletProvider>
+    </Web3Provider>
   )
 }

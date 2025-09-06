@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/Input'
 import { TokenSelector } from '@/components/ui/TokenSelector'
 import { OrbitalSpinner } from '@/components/ui/LoadingSpinner'
 import { TOKENS } from '@/lib/constants'
-import { useOrbitalAMM, parseTokenAmount, formatTokenAmount } from '@/hooks/useOrbitalAMM.ts'
+import { useOrbitalAMMEthers, parseTokenAmount, formatTokenAmount } from '@/hooks/useOrbitalAMMEthers'
 import { formatNumber, formatCurrency } from '@/lib/utils'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/useWallet'
 
 interface LiquidityPosition {
   k: string
@@ -25,7 +25,7 @@ interface LiquidityPosition {
 }
 
 export function LiquidityInterface() {
-  const { address } = useAccount()
+  const { address } = useWallet()
   const [mode, setMode] = useState<'add' | 'remove'>('add')
   const [selectedTokens, setSelectedTokens] = useState<typeof TOKENS[number][]>([TOKENS[0], TOKENS[1], TOKENS[2], TOKENS[3], TOKENS[4]])
   const [amounts, setAmounts] = useState(['', '', '', '', ''])
@@ -41,7 +41,7 @@ export function LiquidityInterface() {
     isLoading,
     error,
     isConfirmed
-  } = useOrbitalAMM()
+  } = useOrbitalAMMEthers()
 
   // Load user positions
   useEffect(() => {
@@ -52,12 +52,19 @@ export function LiquidityInterface() {
 
       for (const k of activeTicks) {
         const [tickInfo, lpShares] = await Promise.all([
-          getTickInfo(k).data,
-          getUserLpShares(k).data
+          getTickInfo(k),
+          getUserLpShares(k)
         ])
 
         if (lpShares && lpShares > BigInt(0) && tickInfo) {
-          const [r, liquidity, reserves, totalLpShares, status, accruedFees] = tickInfo
+          const [r, liquidity, reserves, totalLpShares, status, accruedFees] = [
+            tickInfo.r,
+            tickInfo.liquidity,
+            tickInfo.reserves,
+            tickInfo.totalLpShares,
+            tickInfo.status,
+            tickInfo.accruedFees
+          ]
           userPositions.push({
             k: k.toString(),
             radius: r,
