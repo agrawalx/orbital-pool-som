@@ -26,11 +26,11 @@ export const SOMNIA_TESTNET = {
 export const CONTRACTS = {
   ORBITAL_POOL: process.env.NEXT_PUBLIC_ORBITAL_POOL_ADDRESS || '0xc8b4956D500a5bBA4316078cEf8c8EB70aEcc7cB',
   // Token addresses (these should match the tokens array in the orbital pool contract)
-  USDC: '0x4880dF7c01b31aEa71AEB41C1a29513598675A9B', // tokens[0]
-  USDT: '0x47b5F881263668fe62eA532845DbEBba6896fF83', // tokens[1] 
-  DAI: '0xD6c42FF19FC1E31fc01dbEE4115a9dE39143Fc74',  // tokens[2]
-  FRAX: '0x0B96b05940972F5f27f2e4FfccD79FCaF068f7FF', // tokens[3]
-  LUSD: '0xCBe8635Ca41e625588cd72007b6653Bd68cEd20B', // tokens[4]
+  USDC: '0x35517FBbdC45Be29394dAcf18555953BCBB04Ec8', // tokens[0]
+  USDT: '0x58b12d91a1d9C84B2Ab5eEA278bC47f19Dc0b972', // tokens[1]
+  DAI: '0x5c01b4B48c5a7f7FF2A47eB1CF09acB11d5f8182',  // tokens[2]
+  FRAX: '0x414d7aac54808a954Acd902Db929CC8E3C8469Df', // tokens[3]
+  LUSD: '0xc169519b792c4dB9343Bb1dA77D1E1835Bf92CD1', // tokens[4]
 } as const;
 
 // Global provider instance

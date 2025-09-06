@@ -11,7 +11,7 @@ export const TOKENS = [
   {
     symbol: "USDC",
     name: "USD Coin",
-    address: "0x4880dF7c01b31aEa71AEB41C1a29513598675A9B", // tokens[0] in contract
+    address: "0x35517FBbdC45Be29394dAcf18555953BCBB04Ec8", // tokens[0] in contract
     decimals: 18,
     logo: "/tokens/usdc.svg",
     color: "#2775CA",
@@ -20,7 +20,7 @@ export const TOKENS = [
   {
     symbol: "USDT",
     name: "Tether USD",
-    address: "0x47b5F881263668fe62eA532845DbEBba6896fF83", // tokens[1] in contract
+    address: "0x58b12d91a1d9C84B2Ab5eEA278bC47f19Dc0b972", // tokens[1] in contract
     decimals: 18,
     logo: "/tokens/usdt.svg",
     color: "#26A17B",
@@ -29,7 +29,7 @@ export const TOKENS = [
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
-    address: "0xD6c42FF19FC1E31fc01dbEE4115a9dE39143Fc74", // tokens[2] in contract
+    address: "0x5c01b4B48c5a7f7FF2A47eB1CF09acB11d5f8182", // tokens[2] in contract
     decimals: 18,
     logo: "/tokens/dai.svg",
     color: "#F5AC37",
@@ -38,7 +38,7 @@ export const TOKENS = [
   {
     symbol: "FRAX",
     name: "Frax",
-    address: "0x0B96b05940972F5f27f2e4FfccD79FCaF068f7FF", // tokens[3] in contract
+    address: "0x414d7aac54808a954Acd902Db929CC8E3C8469Df", // tokens[3] in contract
     decimals: 18,
     logo: "/tokens/frax.svg",
     color: "#000000",
@@ -47,7 +47,7 @@ export const TOKENS = [
   {
     symbol: "LUSD",
     name: "Liquity USD",
-    address: "0xCBe8635Ca41e625588cd72007b6653Bd68cEd20B", // tokens[4] in contract
+    address: "0xc169519b792c4dB9343Bb1dA77D1E1835Bf92CD1", // tokens[4] in contract
     decimals: 18,
     logo: "/tokens/lusd.svg",
     color: "#745DDF",
@@ -57,7 +57,7 @@ export const TOKENS = [
 
 // Pool configuration
 export const POOL_CONFIG = {
-  address: "0x0bb910695e728149Ae3A52f186E972bC295d7a26",
+  address: "0xcc0F44fe3c9350CD8Aa2477e9EC13F673BB287A3",
   fee: 0.003, // 0.3%
   maxSlippage: 0.05, // 5%
   minLiquidity: 1000,
