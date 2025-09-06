@@ -129,7 +129,9 @@ contract DeployScript is Script {
         console.log("5. Use the helper functions to calculate valid k values for your desired reserves");
         
         // Save deployment addresses to file for easy access
-        _saveDeploymentAddresses(address(pool), stableCoins);
+        if (block.chainid != 31337) { // Don't write files in test environment (anvil)
+            _saveDeploymentAddresses(address(pool), stableCoins);
+        }
     }
     
     function _saveDeploymentAddresses(address poolAddress, StableCoin[5] memory tokens) internal {
