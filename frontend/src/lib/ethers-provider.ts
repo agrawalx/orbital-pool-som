@@ -24,7 +24,7 @@ export const SOMNIA_TESTNET = {
 
 // Contract addresses
 export const CONTRACTS = {
-  ORBITAL_POOL: process.env.NEXT_PUBLIC_ORBITAL_POOL_ADDRESS || '0xc8b4956D500a5bBA4316078cEf8c8EB70aEcc7cB',
+  ORBITAL_POOL: process.env.NEXT_PUBLIC_ORBITAL_POOL_ADDRESS || '0xcc0F44fe3c9350CD8Aa2477e9EC13F673BB287A3',
   // Token addresses (these should match the tokens array in the orbital pool contract)
   USDC: '0x35517FBbdC45Be29394dAcf18555953BCBB04Ec8', // tokens[0]
   USDT: '0x58b12d91a1d9C84B2Ab5eEA278bC47f19Dc0b972', // tokens[1]

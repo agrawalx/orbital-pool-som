@@ -34,7 +34,7 @@ The Orbital AMM is built on the mathematical foundation described in the [Paradi
 
 **1. Sphere AMM Formula**
 
-<img src="public/orbital_equation.png" width="400" alt="Orbital Equation" /> 
+<img src="public/orbital_equation.jpg" width="400" alt="Orbital Equation" /> 
 
 Where:
 - `r(vector) = (r, r, ..., r)` vector is the center of the sphere
