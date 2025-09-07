@@ -1,252 +1,171 @@
-# Orbital Pool AMM
+## Introduction
 
-A Solidity implementation of Paradigm's Orbital AMM (Automated Market Maker) for multi-dimensional stablecoin pools. This implementation uses spherical geometry and toroidal mathematics to provide concentrated liquidity in a novel way.
+> *Orbital Pool isn’t just another AMM, it’s a paradigm shift. The future holds a million stablecoins. Today's infrastructure isn't ready.*
 
-## Overview
+Orbital is an automated market maker for pools of 2, 3, or 10,000 stablecoins. It unlocks capital efficiency by bringing concentrated liquidity to higher dimensions.
 
-The Orbital AMM introduces a new approach to concentrated liquidity that leverages:
+By bending liquidity into a torus-shaped universe, Orbital unlocks concentrated liquidity for three or more stablecoins at once. This isn’t your usual 2D liquidity grid—it’s an entirely new dimension where LPs can laser-focus around the sacred $1 mark, while still guaranteeing fair prices even if an entire stablecoin implodes to zero.
 
-- **Spherical Geometry**: Reserves are constrained to lie on a sphere in n-dimensional space
-- **Torus Invariant**: The core invariant maintains the sum of squared reserves across interior and boundary ticks
-- **Tick Boundaries**: Concentrated liquidity positions are defined by radius (R) and plane constant (P) parameters
+It’s like Uniswap V3’s surgical precision colliding head-on with Curve’s bulletproof stability, and the result is something that shouldn’t even exist, but somehow, it does.
+
+Orbital is the AMM where capital efficiency doesn’t just scale, it warps!
+
+## Mathematical Visualization
+<p float="left"><img src="https://raw.githubusercontent.com/leeederek/sphere-swap/main/media/orbital-gif-1.gif" width="49%" alt="Orbital GIF 1" /> <img src="https://raw.githubusercontent.com/leeederek/sphere-swap/main/media/orbital-gif-2.gif" width="49%" alt="Orbital GIF 2" />
+</p>
 
 ## Key Features
 
-### 🎯 Concentrated Liquidity
-- Multi-dimensional concentrated liquidity positions
-- Efficient capital utilization through geometric constraints
-- Dynamic tick boundary management
+- *Multi-Token Stability Engine*: Seamlessly trade across three or more stablecoins in a single pool with no more fragmented liquidity.
 
-### 🔄 Advanced Swap Execution
-- Torus invariant-based trade calculations
-- Automatic trade segmentation for boundary crossings
-- Slippage protection and fee distribution
+- *Warped Concentrated Liquidity*: Liquidity providers can laser-focus capital around $1, achieving maximum efficiency while still keeping markets resilient.
 
-### 📊 Mathematical Precision
-- 18-decimal precision arithmetic
-- Quadratic equation solvers for trade calculations
-- Geometric validation for all operations
+- *Torus Invariant Model*: A breakthrough mathematical invariant that curves liquidity across dimensions, ensuring fair pricing even in extreme scenarios.
 
-### 🛡️ Security Features
-- Reentrancy protection
-- Comprehensive input validation
-- Geometric constraint enforcement
-- Slippage protection
-
-## Architecture
-
-### Core Components
-
-1. **OrbitalPool**: Main AMM contract with all trading logic
-2. **Tick Management**: Concentrated liquidity position management
-3. **Boundary Detection**: Automatic detection of tick boundary crossings
-4. **Fee Distribution**: Proportional fee distribution to active ticks
-
-### Data Structures
-
-- **Tick**: Individual concentrated liquidity position
-- **GlobalState**: Consolidated pool state for efficient computation
-- **ConsolidatedTickData**: Aggregated data for interior and boundary ticks
+- *Fusion of Giants (Uniswap × Curve)*: Orbital takes Uniswap V3’s precision and Curve’s stability, merging them into a next-generation AMM.
 
 ## Mathematical Foundation
 
-The implementation is based on the mathematical principles outlined in Paradigm's research:
+### The Orbital Model
 
-### Torus Invariant
-```
-||r_interior||² + ||r_boundary||² = invariant
-```
+The Orbital AMM is built on the mathematical foundation described in the [Paradigm Orbital Whitepaper](https://www.paradigm.xyz/2025/06/orbital). The core innovation lies in extending concentrated liquidity to higher dimensions using spherical geometry.
 
-### Trade Execution
-For a trade from token i to token j:
-```
-||r + Δeᵢ - Δ'eⱼ||² = ||r||²
-```
+#### Core Mathematical Concepts
 
-### Boundary Conditions
-```
-||r + Δeᵢ||² = (P/R)²
-```
+*1. Sphere AMM Formula*
 
-For detailed mathematical explanations, see [MATHEMATICAL_IMPLEMENTATION.md](docs/MATHEMATICAL_IMPLEMENTATION.md).
+<img src="public/orbital_equation.jpg" width="400" alt="Orbital Equation" /> 
 
-## Getting Started
+Where:
+- r(vector) = (r, r, ..., r) vector is the center of the sphere
+- xᵢ is the AMM's reserve of asset i
+- r is the radius of the sphere
+
+*2. Torus Invariant*
+
+The pool uses a torus (donut-shaped) invariant that combines:
+- *Interior Ticks*: Behave like spheres for normal trading
+- *Boundary Ticks*: Behave like circles when reserves hit boundaries
+
+<img src="public/torus_equation.jpg" width="400" alt="Torus Equation" />
+
+*4. Tick Geometry*
+
+Each tick is defined by:
+- *k*: Plane constant (tick identifier)
+- *r*: Radius of the tick
+- *Status*: Interior or Boundary
+
+#### K-Value Validation
+
+The k-value must satisfy the constraint:
+
+k ≥ (r × PRECISION) / SQRT5_SCALED
+
+
+Where:
+- PRECISION = 1e15
+- SQRT5_SCALED = 2236067977499790
+
+## Contract Addresses
+
+- *Orbital AMM Pool*: ``
+- *MUSDC-A*: ``
+- *MUSDC-B*: ``
+- *MUSDC-C*: ``
+- *MUSDC-D*: ``
+- *MUSDC-E*: ``
+
+## Architecture & User Flow
+
+<img src="public/userflow.png" width="600" alt="UserFlow" /> 
+
+<img src="" width="600" alt="Architecture" /> 
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Foundry (for development and testing)
-- Solidity 0.8.30+
+- Foundry installed
+- Node.js 16+ (for testing)
+- Git
 
 ### Installation
 
-```bash
+bash
 # Clone the repository
-git clone <repository-url>
-cd orbital-pool-som
+git clone https://github.com/your-org/orbital-pool.git
+cd orbital-pool
 
 # Install dependencies
 forge install
 
 # Build the project
 forge build
-```
 
-### Testing
-
-```bash
-# Run all tests
+# Run tests
 forge test
 
-# Run tests with verbose output
-forge test -vv
 
-# Run specific test
-forge test --match-test test_SwapExecution
-```
+### Steps to configure your own pool
 
-### Deployment
+bash
+# Deploy pool and the mock tokens
+forge script script/DeployAndConfig.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast
 
-```bash
-# Deploy to local network
-forge script script/Deploy.s.sol --rpc-url <rpc-url> --private-key <private-key>
+# Command to add liqudity
+cast send $POOL_ADDRESS "addLiquidity(uint256,uint256[5])" 3000000000000000 "[1000000000000000000000,1000000000000000000000,1000000000000000000000,1000000000000000000000,1000000000000000000000]" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 
-# Deploy to testnet
-forge script script/Deploy.s.sol --rpc-url <testnet-rpc> --private-key <private-key> --broadcast
-```
+# Command to swap 
+cast send $POOL_ADDRESS "swap(uint256,uint256,uint256,uint256)" 0 1 20000000000000000000 0 --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 
-## Usage
 
-### Adding Liquidity
+### Frontend installation
 
-```solidity
-// Approve tokens first
-tokenA.approve(address(pool), amount);
-tokenB.approve(address(pool), amount);
-tokenC.approve(address(pool), amount);
+#### Development
 
-// Add liquidity to a tick
-uint256[] memory amounts = new uint256[](3);
-amounts[0] = 100e18; // 100 Token A
-amounts[1] = 100e18; // 100 Token B
-amounts[2] = 100e18; // 100 Token C
+bash
+# Install dependencies
+npm install
 
-(uint256 tickId, uint256 shares) = pool.addLiquidity(
-    1000e18,  // radius
-    500e18,   // plane constant
-    amounts
-);
-```
+# Start development server
+npm run dev
 
-### Executing Swaps
 
-```solidity
-// Approve input token
-tokenA.approve(address(pool), amountIn);
+#### Environment Variables
 
-// Execute swap
-uint256 amountOut = pool.swap(
-    0,        // tokenInIndex
-    1,        // tokenOutIndex
-    amountIn, // amountIn
-    minOut    // minimum amount out
-);
-```
+Copy .env.example to .env.local and fill in:
 
-### Removing Liquidity
+bash
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
 
-```solidity
-uint256[] memory amounts = pool.removeLiquidity(tickId, sharesToBurn);
-```
 
-## API Reference
+All contract addresses are pre-configured for Arbitrum Sepolia testnet.
 
-### Core Functions
+## Youtube Link
 
-#### `addLiquidity(uint256 radius, uint256 planeConstant, uint256[] memory amounts)`
-Add liquidity to a concentrated liquidity position.
+- [Video Demo]()
 
-#### `removeLiquidity(uint256 tickId, uint256 sharesToBurn)`
-Remove liquidity from a tick position.
+## Documentation
 
-#### `swap(uint256 tokenInIndex, uint256 tokenOutIndex, uint256 amountIn, uint256 minAmountOut)`
-Execute a swap between two tokens.
+### Whitepaper Reference
 
-### View Functions
+This implementation is based on the [Paradigm Orbital Whitepaper](https://www.paradigm.xyz/2025/06/orbital), which provides the mathematical foundation for the Orbital AMM model.
 
-#### `getPrice(uint256 tokenIndex)`
-Get the current price of a token relative to others.
+### Key Concepts from Whitepaper
 
-#### `getTickInfo(uint256 tickId)`
-Get detailed information about a tick position.
+1. *Sphere AMM*: Base mathematical model using spherical geometry
+2. *Torus Invariant*: Combined interior and boundary tick behavior
+3. *Tick Consolidation*: Efficient aggregation of similar ticks
+4. *Global Trade Invariant*: Method for calculating large trades across multiple ticks
 
-#### `getGlobalState()`
-Get the current global pool state.
+### Development Team
 
-#### `getLpShares(uint256 tickId, address provider)`
-Get LP shares for a specific address in a tick.
+- [@agrawalx](https://github.com/agrawalx)
+- [@guptak12](https://github.com/guptak12)
 
-## Testing
+## 📄 License
 
-The project includes comprehensive tests covering:
+This project is licensed under the MIT License.
 
-- ✅ Basic liquidity operations
-- ✅ Swap execution with torus invariant
-- ✅ Boundary crossing detection
-- ✅ Tick status management
-- ✅ Fee distribution
-- ✅ Geometric constraints
-- ✅ Error handling
-
-Run tests with:
-```bash
-forge test
-```
-
-## Gas Optimization
-
-The implementation includes several gas optimizations:
-
-1. **Consolidated Data Structures**: Efficient computation through data aggregation
-2. **Early Reverts**: Invalid operations detected early
-3. **Minimal Storage**: Only essential data stored on-chain
-4. **Optimized Math**: Efficient mathematical operations
-
-## Security Considerations
-
-- **Reentrancy Protection**: All external functions protected
-- **Input Validation**: Comprehensive geometric validation
-- **Slippage Protection**: Minimum output amount checks
-- **Precision Handling**: Careful precision management
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
-
-## License
-
-This project is licensed under the UNLICENSED license.
-
-## Acknowledgments
-
-- Paradigm Research for the Orbital AMM concept
-- OpenZeppelin for security libraries
-- Foundry team for the development framework
-
-## References
-
-- [Orbital AMM Whitepaper](https://www.paradigm.xyz/2025/06/orbital)
-- [Mathematical Implementation Guide](docs/MATHEMATICAL_IMPLEMENTATION.md)
-- [Foundry Documentation](https://book.getfoundry.sh/)
-- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/)
-
-## Support
-
-For questions and support:
-- Open an issue on GitHub
-- Check the documentation in the `docs/` folder
-- Review the test files for usage examples
+Built with ❤ by the Orbital
