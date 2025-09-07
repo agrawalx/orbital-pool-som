@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Navigation } from '@/components/Navigation'
 import { SwapInterface } from '@/components/SwapInterfaceEthers'
 import { LiquidityInterface } from '@/components/LiquidityInterfaceEthers'
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard'
+import { RealAnalyticsDashboard } from '@/components/RealAnalyticsDashboard'
 import { GeometricBackground } from '@/components/ui/GeometricBackground'
 import { ParticleField, NeuralNetwork } from '@/components/ui/PremiumEffects'
 import { FloatingActions } from '@/components/ui/FloatingActions'
@@ -48,7 +48,7 @@ export default function Home() {
       case 'liquidity':
         return <LiquidityInterface />
       case 'analytics':
-        return <AnalyticsDashboard />
+        return <RealAnalyticsDashboard />
       default:
         return <SwapInterface />
     }

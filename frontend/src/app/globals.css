@@ -1,14 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #e5e7eb;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
   --primary: #f97316;
   --secondary: #ea580c;
   --accent: #fb923c;
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+}
+
+.dark {
+  --background: #0a0a0f;
+  --foreground: #e5e7eb;
 }
 
 @theme inline {
@@ -18,24 +23,48 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #0a0a0f;
-    --foreground: #e0e6ff;
-  }
-}
-
 body {
-  background: #0a0a0f;
+  background: var(--background);
   min-height: 100vh;
   color: var(--foreground);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   overflow-x: hidden;
   position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* 3D Geometric Background Elements */
-body::before {
+/* Light mode styles */
+body:not(.dark) {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* Dark mode styles */
+.dark body {
+  background: #0a0a0f;
+}
+
+/* 3D Geometric Background Elements - Light mode */
+:not(.dark) body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background-image: 
+    /* Wireframe grid overlay */
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    /* Subtle dots pattern */
+    radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 60px 60px, 60px 60px, 120px 120px, 150px 150px;
+  animation: geometric-drift 60s ease-in-out infinite;
+}
+
+/* 3D Geometric Background Elements - Dark mode */
+.dark body::before {
   content: "";
   position: fixed;
   top: 0;
@@ -54,8 +83,24 @@ body::before {
   animation: geometric-drift 60s ease-in-out infinite;
 }
 
-/* Floating 3D geometric shapes - Reduced for performance */
-body::after {
+/* Floating 3D geometric shapes - Light mode */
+:not(.dark) body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-image: 
+    /* Large geometric shapes */
+    radial-gradient(ellipse 200px 100px at 15% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 150px 200px at 85% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+  animation: shape-float 60s ease-in-out infinite;
+}
+
+/* Floating 3D geometric shapes - Dark mode */
+.dark body::after {
   content: "";
   position: fixed;
   top: 0;
@@ -498,10 +543,24 @@ body::after {
   }
 }
 
-/* Glass Morphism Enhanced */
+/* Glass Morphism Enhanced - Responsive to theme */
 .glass-morphism {
-  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(20px);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Light mode glass */
+:not(.dark) .glass-morphism {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode glass */
+.dark .glass-morphism {
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.3),
@@ -509,8 +568,22 @@ body::after {
 }
 
 .glass-morphism-dark {
-  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(24px);
+  transition: all 0.3s ease;
+}
+
+/* Light mode glass-dark */
+:not(.dark) .glass-morphism-dark {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    0 12px 48px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode glass-dark */
+.dark .glass-morphism-dark {
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
     0 12px 48px rgba(0, 0, 0, 0.4),
