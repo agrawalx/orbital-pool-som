@@ -110,7 +110,19 @@ forge test
 
 ```bash
 # Deploy pool and the mock tokens
-forge script script/DeployAndConfig.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast
+forge script script/Deploy.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast
+```
+If this does not work for you (As it wasn't workin for us on somnia testnet) then you need to deploy all the tokens manually one by one and then call approve for each of the tokens to set allowance limit for contract to transfer tokens from you wallet to the pool.
+
+```bash
+# Deploy all the 5 tokens.
+forge create --broadcast --rpc-url $RPC_URL --private-key $PRIVATE_KEY src/SimpleToken.sol:SimpleToken --constructor-args TokenName TokenSymbol 18
+
+# Deploy the pool.
+forge create --broadcast --rpc-url $RPC_URL --private-key $PRIVATE_KEY src/orbital.sol:orbitalPool --constructor-args [Token-A,Token-B,Token-C,Token-D,Token-E]
+
+# After the pool and token are deployed send this txn on every Token's address.
+cast send $TokenAddr "approve(address,uint256)" $POOL_ADDRESS 100000000000000000000000 --private-key $PRIVATE_KEY --rpc-url $RPC_URL
 
 # Command to add liqudity
 cast send $POOL_ADDRESS "addLiquidity(uint256,uint256[5])" 3000000000000000 "[1000000000000000000000,1000000000000000000000,1000000000000000000000,1000000000000000000000,1000000000000000000000]" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
