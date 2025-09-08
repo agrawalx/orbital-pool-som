@@ -78,7 +78,7 @@ Where:
 
 ## Architecture & User Flow
 
-<img src="public/userflow.jpg" width="600" alt="UserFlow" /> 
+<img src="public/userflow.png" width="600" alt="UserFlow" /> 
 
 
 ## 🚀 Quick Start
