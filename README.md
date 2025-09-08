@@ -69,18 +69,17 @@ Where:
 
 ## Contract Addresses
 
-- **Orbital AMM Pool**: ``
-- **MUSDC-A**: ``
-- **MUSDC-B**: ``
-- **MUSDC-C**: ``
-- **MUSDC-D**: ``
-- **MUSDC-E**: ``
+- **Orbital AMM Pool**: `0xcc0F44fe3c9350CD8Aa2477e9EC13F673BB287A3`
+- **MUSDC-A**: `0x35517FBbdC45Be29394dAcf18555953BCBB04Ec8`
+- **MUSDC-B**: `0x58b12d91a1d9C84B2Ab5eEA278bC47f19Dc0b972`
+- **MUSDC-C**: `0x5c01b4B48c5a7f7FF2A47eB1CF09acB11d5f8182`
+- **MUSDC-D**: `0x414d7aac54808a954Acd902Db929CC8E3C8469Df`
+- **MUSDC-E**: `0xc169519b792c4dB9343Bb1dA77D1E1835Bf92CD1`
 
 ## Architecture & User Flow
 
-<img src="public/userflow.png" width="600" alt="UserFlow" /> 
+<img src="public/userflow.jpg" width="600" alt="UserFlow" /> 
 
-<img src="" width="600" alt="Architecture" /> 
 
 ## 🚀 Quick Start
 
