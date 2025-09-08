@@ -143,7 +143,9 @@ ETHERSCAN_API_KEY="..."
 ```
 
 PRIVATE_KEY: The private key of the account you want to use for deployment. Never commit this file to a public repository.
+
 SOMNIA_RPC_URL: The RPC endpoint for the network you're deploying to (e.g., Somnia's testnet or mainnet).
+
 ETHERSCAN_API_KEY: Your Etherscan API key, which is required for automatic contract verification during deployment.
 
 All contract addresses are pre-configured for Somnia testnet.
