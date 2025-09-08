@@ -23,7 +23,7 @@ const Web3Context = createContext<Web3ContextType>({
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [provider, setProvider] = useState(null);
+  const [provider, setProvider] = useState<any>(null);
 
   useEffect(() => {
     const init = async () => {

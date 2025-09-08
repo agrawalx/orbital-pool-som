@@ -340,8 +340,8 @@ export function LiquidityInterface() {
                     </div>
                     <TokenSelector
                       selectedToken={token}
-                      onTokenSelect={(newToken) => handleTokenChange(index, newToken)}
-                      excludeTokens={selectedTokens.filter((_, i) => i !== index).map(t => t.symbol)}
+                      onSelect={(newToken) => handleTokenChange(index, newToken)}
+                      excludeTokens={selectedTokens.filter((_, i) => i !== index)}
                       className="w-32"
                     />
                     {selectedTokens.length > 2 && (

@@ -14,7 +14,7 @@ import { Toaster } from 'react-hot-toast'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'swap' | 'liquidity' | 'analytics'>('swap')
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
 
   // Initialize dark mode from localStorage
   useEffect(() => {

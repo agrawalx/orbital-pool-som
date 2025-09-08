@@ -274,30 +274,3 @@ export function LiquidityInterface() {
   );
 }
             
-            <div className="flex justify-between items-center p-3 rounded-lg bg-black/20">
-              <span>Wallet Connection</span>
-              <span className="text-green-400">✓ Working</span>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 rounded-lg bg-black/20">
-              <span>Swap Interface</span>
-              <span className="text-green-400">✓ Available</span>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 rounded-lg bg-black/20">
-              <span>Liquidity UI</span>
-              <span className="text-amber-400">⚠ In Progress</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-lg bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20">
-            <p className="text-xs text-orange-300">
-              <strong>Note:</strong> Use the Swap interface to test the Ethers.js integration. 
-              Connect your wallet to Somnia testnet and try swapping tokens!
-            </p>
-          </div>
-        </motion.div>
-      </Card>
-    </div>
-  );
-}

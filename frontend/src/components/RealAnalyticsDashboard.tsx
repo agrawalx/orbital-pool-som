@@ -92,7 +92,7 @@ export function RealAnalyticsDashboard() {
       // Load user positions if connected
       if (isConnected && address) {
         const userPositionPromises = activeTicks.map(async (k) => {
-          const shares = await getUserLpShares(k, address);
+          const shares = await getUserLpShares(k);
           return { k, shares: shares || BigInt(0) };
         });
 

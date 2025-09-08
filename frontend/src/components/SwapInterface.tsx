@@ -203,8 +203,8 @@ export function SwapInterface() {
                                     <div className="flex-shrink-0">
                                         <TokenSelector
                                             selectedToken={tokenIn}
-                                            onTokenSelect={setTokenIn}
-                                            excludeTokens={[tokenOut.symbol]}
+                                            onSelect={setTokenIn}
+                                            excludeTokens={[tokenOut]}
                                             className="w-32"
                                         />
                                     </div>
@@ -254,8 +254,8 @@ export function SwapInterface() {
                                     <div className="flex-shrink-0">
                                         <TokenSelector
                                             selectedToken={tokenOut}
-                                            onTokenSelect={setTokenOut}
-                                            excludeTokens={[tokenIn.symbol]}
+                                            onSelect={setTokenOut}
+                                            excludeTokens={[tokenIn]}
                                             className="w-32"
                                         />
                                     </div>
