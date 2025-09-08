@@ -152,7 +152,7 @@ All contract addresses are pre-configured for Somnia testnet.
 
 ## Youtube Link
 
-- [Video Demo]()
+- [Video Demo](https://youtu.be/bEDLBLG8E2Y)
 
 ## Documentation
 
